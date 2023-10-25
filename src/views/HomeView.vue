@@ -97,25 +97,14 @@ for (let i = 0; i < 23; i++) {
 export default defineComponent({
   name: 'HomeView',
   setup() {
-
-    const pagination = {
-      onChange: (page: number) => {
-        console.log(page);
-      },
-      pageSize: 3,
-    };
-
     const actions: Record<string, string>[] = [
       { type: 'StarOutlined', text: '156' },
       { type: 'LikeOutlined', text: '156' },
       { type: 'MessageOutlined', text: '2' },
     ];
-
-    console.log("setup")
     const ebooks = ref()
     onMounted(()=>{
-      axios.get("http://localhost/ebook/list").then( resp =>{
-        console.log(resp)
+      axios.get("/ebook/list").then( resp =>{
         ebooks.value = resp.data.data
       })
     });
@@ -123,7 +112,6 @@ export default defineComponent({
     return{
       ebooks,
       listData,
-      pagination,
       actions,
     }
   }
