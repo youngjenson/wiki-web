@@ -57,13 +57,6 @@
             {{ text }}
           </span>
             </template>
-            <template #extra>
-              <img
-                  width="272"
-                  alt="logo"
-                  src="https://gw.alipayobjects.com/zos/rmsportal/mqaQswcyDLcXyDKnZfES.png"
-              />
-            </template>
             <a-list-item-meta :description="item.description">
               <template #title>
                 <a :href="item.href">{{ item.name }}</a>
@@ -105,7 +98,7 @@ export default defineComponent({
     const ebooks = ref()
     onMounted(()=>{
       axios.get("/ebook/list").then( resp =>{
-        ebooks.value = resp.data.data
+        ebooks.value = resp.data.data.list
       })
     });
 
