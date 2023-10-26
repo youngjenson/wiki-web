@@ -4,9 +4,21 @@
         :style="{ background: '#fff', padding: '24px', margin: 0, minHeight: '280px' }"
     >
       <p>
-        <a-button type="primary" @click="add()">
-          新增
-        </a-button>
+        <a-form layout="inline" :model="param">
+          <a-form-item>
+            <a-input v-model:value="param.name" placeholder="名称"/>
+          </a-form-item>
+          <a-form-item>
+            <a-button type="primary" @click="handleQuery({page:1,size:pagination.pageSize})">
+              查询
+            </a-button>
+          </a-form-item>
+          <a-form-item>
+            <a-button type="primary" @click="add()">
+              新增
+            </a-button>
+          </a-form-item>
+        </a-form>
       </p>
       <a-table
           :columns="columns"
@@ -29,7 +41,7 @@
                 @confirm="handleDelete(record.id)"
                 @cancel="cancel"
             >
-              <a-button type="primary" danger >删除</a-button>
+              <a-button type="primary" danger>删除</a-button>
             </a-popconfirm>
 
           </a-space>
@@ -67,6 +79,7 @@
 import {defineComponent, onMounted, ref} from "vue";
 import axios from "axios";
 import {message} from "ant-design-vue";
+import {Tool} from "@/utils/tool";
 
 export default defineComponent({
   name: 'AdminEbook',
@@ -124,16 +137,20 @@ export default defineComponent({
       console.log(params.page, params.size)
       loading.value = true;
       axios.get("/ebook/list", {
-        params: params
+        params: {
+          page: params.page,
+          size: params.size,
+          name: param.value.name
+        }
       }).then(response => {
         loading.value = false;
         const data = response.data;
-        if(data.code == 200) {
+        if (data.code == 200) {
           ebooks.value = data.data.list;
           //重置分页按钮
           pagination.value.current = params.page;
           pagination.value.total = data.data.total
-        }else{
+        } else {
           message.error(data.message)
         }
       });
@@ -182,7 +199,7 @@ export default defineComponent({
      */
     const edit = (record: any) => {
       modalVisible.value = true;
-      ebook.value = record
+      ebook.value = Tool.copy(record)
     }
 
     /**
@@ -197,15 +214,15 @@ export default defineComponent({
      * 删除
      */
     const handleDelete = (id: any) => {
-      axios.delete("/ebook/delete/"+id).then( response => {
+      axios.delete("/ebook/delete/" + id).then(response => {
         const data = response.data;
-        if(data.code == 200){
+        if (data.code == 200) {
           message.success(data.message)
           handleQuery({
             page: pagination.value.current,
             size: pagination.value.pageSize
           })
-        }else{
+        } else {
           message.error(data.message)
         }
       })
@@ -214,6 +231,12 @@ export default defineComponent({
     const cancel = () => {
       message.info("取消删除")
     };
+
+    /**
+     * 名称
+     */
+    const param = ref();
+    param.value = {};
 
     return {
       ebooks,
@@ -230,7 +253,9 @@ export default defineComponent({
 
       add,
       handleDelete,
-      cancel
+      cancel,
+      handleQuery,
+      param
     }
   }
 })
