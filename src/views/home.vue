@@ -73,6 +73,7 @@
 <script lang="ts">
 import { defineComponent, onMounted ,ref} from 'vue';
 import axios from "axios";
+import {message} from "ant-design-vue";
 
 const listData: Record<string, string>[] = [];
 
@@ -98,7 +99,14 @@ export default defineComponent({
     const ebooks = ref()
     onMounted(()=>{
       axios.get("/ebook/list").then( resp =>{
-        ebooks.value = resp.data.data.list
+        const data = resp.data
+        if(data.code == 200){
+          console.log(data)
+          ebooks.value = data.data.list
+          console.log(ebooks.value)
+        }else{
+          message.error(data.message)
+        }
       })
     });
 

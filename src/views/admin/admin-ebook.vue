@@ -3,6 +3,11 @@
     <a-layout-content
         :style="{ background: '#fff', padding: '24px', margin: 0, minHeight: '280px' }"
     >
+      <p>
+        <a-button type="primary" @click="add()">
+          新增
+        </a-button>
+      </p>
       <a-table
           :columns="columns"
           :data-source="ebooks"
@@ -14,15 +19,25 @@
         <template #cover="{ text: cover }">
           <img v-if="cover" :src="cover" alt="avatar">
         </template>
-        <template v-slot:action="{ text , record }">
+        <template v-slot:action="{ text: record }">
           <a-space size="small">
             <a-button type="primary" @click="edit(record)">编辑</a-button>
-            <a-button type="primary" danger>删除</a-button>
+            <a-popconfirm
+                title="确认要删除该条数据吗?"
+                ok-text="是"
+                cancel-text="否"
+                @confirm="handleDelete(record.id)"
+                @cancel="cancel"
+            >
+              <a-button type="primary" danger >删除</a-button>
+            </a-popconfirm>
+
           </a-space>
         </template>
       </a-table>
     </a-layout-content>
   </a-layout>
+
   <a-modal
       title="电子书表单"
       v-model:visible="modalVisible"
@@ -31,19 +46,19 @@
   >
     <a-form :model="ebook" :label-col="{span: 6}" :wrapper-col="wrapperCol">
       <a-form-item label="封面">
-        <a-input v-model:value="ebook.cover" />
+        <a-input v-model:value="ebook.cover"/>
       </a-form-item>
       <a-form-item label="名称">
-        <a-input v-model:value="ebook.name" />
+        <a-input v-model:value="ebook.name"/>
       </a-form-item>
       <a-form-item label="分类一">
-        <a-input v-model:value="ebook.category1Id" />
+        <a-input v-model:value="ebook.category1Id"/>
       </a-form-item>
       <a-form-item label="分类二">
-        <a-input v-model:value="ebook.category2Id" />
+        <a-input v-model:value="ebook.category2Id"/>
       </a-form-item>
       <a-form-item label="描述">
-        <a-input v-model:value="ebook.desc" type="text"/>
+        <a-input v-model:value="ebook.description" type="text"/>
       </a-form-item>
     </a-form>
   </a-modal>
@@ -51,6 +66,7 @@
 <script lang="ts">
 import {defineComponent, onMounted, ref} from "vue";
 import axios from "axios";
+import {message} from "ant-design-vue";
 
 export default defineComponent({
   name: 'AdminEbook',
@@ -96,7 +112,7 @@ export default defineComponent({
       {
         title: '操作',
         key: 'action',
-        slots: { customRender: 'action'}
+        slots: {customRender: 'action'}
       }
     ];
 
@@ -104,17 +120,22 @@ export default defineComponent({
      * 数据查询
      */
     const handleQuery = (params: any) => {
-      console.log(params.page,params.size)
+
+      console.log(params.page, params.size)
       loading.value = true;
-      axios.get("/ebook/list",{
+      axios.get("/ebook/list", {
         params: params
       }).then(response => {
         loading.value = false;
         const data = response.data;
-        ebooks.value = data.data.list;
-        //重置分页按钮
-        pagination.value.current = params.page;
-        pagination.value.total = data.data.total
+        if(data.code == 200) {
+          ebooks.value = data.data.list;
+          //重置分页按钮
+          pagination.value.current = params.page;
+          pagination.value.total = data.data.total
+        }else{
+          message.error(data.message)
+        }
       });
     };
 
@@ -123,11 +144,11 @@ export default defineComponent({
      */
     const handleTableChange = (pagination: any) => {
       handleQuery({
-            page: pagination.current,
-            size: pagination.pageSize
+        page: pagination.current,
+        size: pagination.pageSize
       })
     };
-    onMounted(()=>{
+    onMounted(() => {
       handleQuery({
         page: 1,
         size: pagination.value.pageSize
@@ -140,41 +161,76 @@ export default defineComponent({
     const modalLoading = ref(false)
     const handleModalOk = () => {
       modalLoading.value = true;
-      setTimeout(()=>{
-        modalVisible.value = false;
-        modalLoading.value = false;
-      },2000)
-      axios.post("/ebook/edit",ebook.value).then(response =>{
+      axios.post("/ebook/edit", ebook.value).then(response => {
         const data = response.data;
-        if(data.code === 200){
+        if (data.code === 200) {
           modalVisible.value = false;
           modalLoading.value = false;
-
+          message.success(data.message)
           handleQuery({
             page: pagination.value.current,
             size: pagination.value.pageSize
           })
+        } else {
+          modalLoading.value = false;
+          message.error(data.message)
         }
       })
     }
     /**
      * 编辑
      */
-    const edit = (record: any) =>{
+    const edit = (record: any) => {
       modalVisible.value = true;
       ebook.value = record
     }
-    return{
+
+    /**
+     * 新增
+     */
+    const add = () => {
+      modalVisible.value = true;
+      ebook.value = {}
+    }
+
+    /**
+     * 删除
+     */
+    const handleDelete = (id: any) => {
+      axios.delete("/ebook/delete/"+id).then( response => {
+        const data = response.data;
+        if(data.code == 200){
+          message.success(data.message)
+          handleQuery({
+            page: pagination.value.current,
+            size: pagination.value.pageSize
+          })
+        }else{
+          message.error(data.message)
+        }
+      })
+    }
+
+    const cancel = () => {
+      message.info("取消删除")
+    };
+
+    return {
       ebooks,
       pagination,
       columns,
       loading,
       handleTableChange,
+
       edit,
       modalVisible,
       modalLoading,
       handleModalOk,
-      ebook
+      ebook,
+
+      add,
+      handleDelete,
+      cancel
     }
   }
 })
