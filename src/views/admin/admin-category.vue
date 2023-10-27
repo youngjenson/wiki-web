@@ -6,14 +6,6 @@
       <p>
         <a-form layout="inline" :model="param">
           <a-form-item>
-            <a-input v-model:value="param.name" placeholder="名称"/>
-          </a-form-item>
-          <a-form-item>
-            <a-button type="primary" @click="handleQuery({page:1,size:pagination.pageSize})">
-              查询
-            </a-button>
-          </a-form-item>
-          <a-form-item>
             <a-button type="primary" @click="add()">
               新增
             </a-button>
@@ -24,13 +16,9 @@
           :columns="columns"
           :data-source="categorys"
           :row-key="record => record.id"
-          :pagination="pagination"
           :loading="loading"
-          @change="handleTableChange"
+          :pagination="false"
       >
-        <template #cover="{ text: cover }">
-          <img v-if="cover" :src="cover" alt="avatar">
-        </template>
         <template v-slot:action="{ text: record }">
           <a-space size="small">
             <a-button type="primary" @click="edit(record)">编辑</a-button>
@@ -43,7 +31,6 @@
             >
               <a-button type="primary" danger>删除</a-button>
             </a-popconfirm>
-
           </a-space>
         </template>
       </a-table>
@@ -61,7 +48,13 @@
         <a-input v-model:value="category.name"/>
       </a-form-item>
       <a-form-item label="父分类">
-        <a-input v-model:value="category.parent"/>
+        <a-select
+            v-model:value="category.parent"
+            ref="select"
+        >
+          <a-select-option :value="0">无</a-select-option>
+          <a-select-option v-for="val in categorys" :key="val.id" :value="val.id" :disabled="val.id === category.id">{{val.name}}</a-select-option>
+        </a-select>
       </a-form-item>
       <a-form-item label="顺序">
         <a-input v-model:value="category.sort"/>
@@ -79,11 +72,7 @@ export default defineComponent({
   name: 'AdminCategory',
   setup() {
     const categorys = ref();
-    const pagination = ref({
-      current: 1,
-      pageSize: 7,
-      total: 0
-    });
+
     const loading = ref(false);
     const columns = [
       {
@@ -109,45 +98,20 @@ export default defineComponent({
     /**
      * 数据查询
      */
-    const handleQuery = (params: any) => {
+    const handleQuery = () => {
 
-      console.log(params.page, params.size)
       loading.value = true;
-      axios.get("/category/list", {
-        params: {
-          page: params.page,
-          size: params.size,
-          name: param.value.name
-        }
-      }).then(response => {
+      axios.get("/category/list").then(response => {
         loading.value = false;
         const data = response.data;
         if (data.code == 200) {
-          categorys.value = data.data.list;
-          //重置分页按钮
-          pagination.value.current = params.page;
-          pagination.value.total = data.data.total
+          categorys.value = data.data;
         } else {
           message.error(data.message)
         }
       });
     };
 
-    /**
-     * 表格点击页码时触发
-     */
-    const handleTableChange = (pagination: any) => {
-      handleQuery({
-        page: pagination.current,
-        size: pagination.pageSize
-      })
-    };
-    onMounted(() => {
-      handleQuery({
-        page: 1,
-        size: pagination.value.pageSize
-      });
-    });
 
     //------表单-----
     const category = ref({})
@@ -161,10 +125,7 @@ export default defineComponent({
           modalVisible.value = false;
           modalLoading.value = false;
           message.success(data.message)
-          handleQuery({
-            page: pagination.value.current,
-            size: pagination.value.pageSize
-          })
+          handleQuery()
         } else {
           modalLoading.value = false;
           message.error(data.message)
@@ -195,10 +156,7 @@ export default defineComponent({
         const data = response.data;
         if (data.code == 200) {
           message.success(data.message)
-          handleQuery({
-            page: pagination.value.current,
-            size: pagination.value.pageSize
-          })
+          handleQuery()
         } else {
           message.error(data.message)
         }
@@ -209,6 +167,9 @@ export default defineComponent({
       message.info("取消删除")
     };
 
+    onMounted(()=>{
+      handleQuery();
+    })
     /**
      * 名称
      */
@@ -217,10 +178,8 @@ export default defineComponent({
 
     return {
       categorys,
-      pagination,
       columns,
       loading,
-      handleTableChange,
 
       edit,
       modalVisible,
