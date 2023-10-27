@@ -32,11 +32,16 @@
           <img v-if="cover" :src="cover" alt="avatar">
         </template>
         <template v-slot:category="{text:record}">
-<!--          {{record}}-->
+          <!--          {{record}}-->
           <span>{{ getCategoryName(record.category1Id) }} / {{ getCategoryName(record.category2Id) }}</span>
         </template>
         <template v-slot:action="{ text, record }">
           <a-space size="small">
+            <router-link to="/admin/doc">
+              <a-button type="primary">
+                文档管理
+              </a-button>
+            </router-link>
             <a-button type="primary" @click="edit(record)">编辑</a-button>
             <a-popconfirm
                 title="确认要删除该条数据吗?"
@@ -279,13 +284,13 @@ export default defineComponent({
      */
     const getCategoryName = (cid: any) => {
       let result = "";
-      categoryTemp.forEach((item:any)=>{
-        if(item.id == cid){
-           result = item.name;
-           return result
+      categoryTemp.forEach((item: any) => {
+        if (item.id == cid) {
+          result = item.name;
+          return result
         }
-        item.children.forEach((initem:any)=>{
-          if(initem.id == cid){
+        item.children.forEach((initem: any) => {
+          if (initem.id == cid) {
             result = initem.name
             return result
           }
