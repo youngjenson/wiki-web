@@ -177,11 +177,6 @@ export default defineComponent({
     };
     onMounted(() => {
       handleQueryCategory();
-
-      handleQuery({
-        page: 1,
-        size: pagination.value.pageSize
-      });
     });
 
     //------表单-----
@@ -248,7 +243,7 @@ export default defineComponent({
     /**
      * 查询分类的信息
      */
-    const categoriesTree = ref(false);
+    const categoriesTree = ref();
     let categoryTemp: any
     const handleQueryCategory = () => {
       loading.value = true;
@@ -259,6 +254,11 @@ export default defineComponent({
           console.log("11")
           categoriesTree.value = data.data;
           categoryTemp = data.data;
+          //加载完分类数据再查询电子书
+          handleQuery({
+            page: 1,
+            size: pagination.value.pageSize
+          });
         } else {
           message.error(data.message)
         }

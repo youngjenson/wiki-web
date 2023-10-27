@@ -2,53 +2,29 @@
   <a-layout>
     <a-layout-sider width="200" style="background: #fff">
       <a-menu
-          v-model:selectedKeys="selectedKeys2"
-          v-model:openKeys="openKeys"
-          mode="inline"
           :style="{ height: '100%', borderRight: 0 }"
+          mode="inline"
+          @click="handleClick"
       >
-        <a-sub-menu key="sub1">
-          <template #title>
-              <span>
-                <user-outlined />
-                subnav 1
-              </span>
+        <a-menu-item key="welcome">
+            <MailOutlined/>
+            <span>欢迎</span>
+        </a-menu-item>
+        <a-sub-menu v-for="item in categoriesTree" :key="item.id">
+          <template v-slot:title>
+            <span><user-outlined/>{{item.name}}</span>
           </template>
-          <a-menu-item key="1">option1</a-menu-item>
-          <a-menu-item key="2">option2</a-menu-item>
-          <a-menu-item key="3">option3</a-menu-item>
-          <a-menu-item key="4">option4</a-menu-item>
-        </a-sub-menu>
-        <a-sub-menu key="sub2">
-          <template #title>
-              <span>
-                <laptop-outlined />
-                subnav 2
-              </span>
-          </template>
-          <a-menu-item key="5">option5</a-menu-item>
-          <a-menu-item key="6">option6</a-menu-item>
-          <a-menu-item key="7">option7</a-menu-item>
-          <a-menu-item key="8">option8</a-menu-item>
-        </a-sub-menu>
-        <a-sub-menu key="sub3">
-          <template #title>
-              <span>
-                <notification-outlined />
-                subnav 3
-              </span>
-          </template>
-          <a-menu-item key="9">option9</a-menu-item>
-          <a-menu-item key="10">option10</a-menu-item>
-          <a-menu-item key="11">option11</a-menu-item>
-          <a-menu-item key="12">option12</a-menu-item>
+          <a-menu-item v-for="children in item.children" :key="children.id">
+            <MailOutlined/><span>{{children.name}}</span>
+          </a-menu-item>
         </a-sub-menu>
       </a-menu>
     </a-layout-sider>
     <a-layout-content
         :style="{ background: '#fff', padding: '24px', margin: 0, minHeight: '280px' }"
     >
-      <a-list item-layout="vertical" size="large" :grid="{gutter: 20,column: 3}" :data-source="ebooks">
+      <div class="welcome" v-show="isShowWelcome">111</div>
+      <a-list v-show="!isShowWelcome" item-layout="vertical" size="large" :grid="{gutter: 20,column: 3}" :data-source="ebooks">
         <template #renderItem="{ item }">
           <a-list-item key="item.name">
             <template #actions>
@@ -75,45 +51,73 @@ import { defineComponent, onMounted ,ref} from 'vue';
 import axios from "axios";
 import {message} from "ant-design-vue";
 
-const listData: Record<string, string>[] = [];
-
-for (let i = 0; i < 23; i++) {
-  listData.push({
-    href: 'https://www.antdv.com/',
-    title: `ant design vue part ${i}`,
-    avatar: 'https://zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png',
-    description:
-        'Ant Design, a design language for background applications, is refined by Ant UED Team.',
-    content:
-        'We supply a series of design principles, practical patterns and high quality design resources (Sketch and Axure), to help people create their product prototypes beautifully and efficiently.',
-  });
-}
 export default defineComponent({
   name: 'HomeView',
   setup() {
+
     const actions: Record<string, string>[] = [
       { type: 'StarOutlined', text: '156' },
       { type: 'LikeOutlined', text: '156' },
       { type: 'MessageOutlined', text: '2' },
     ];
+
     const ebooks = ref()
     onMounted(()=>{
-      axios.get("/ebook/list").then( resp =>{
+      handleQueryCategory()
+    });
+
+
+    /**
+     * 查询电子书
+     */
+    const handleEbookQuery = (param : any) => {
+      axios.get("/ebook/list",{
+        params: {
+          category2Id: param
+        }
+      }).then( resp =>{
         const data = resp.data
         if(data.code == 200){
-          console.log(data)
           ebooks.value = data.data.list
-          console.log(ebooks.value)
         }else{
           message.error(data.message)
         }
       })
-    });
+    }
+    const isShowWelcome = ref(true)
+    const handleClick = (value:any) => {
+      if(value.key === 'welcome'){
+        isShowWelcome.value = true;
+      }else{
+        handleEbookQuery(value.key)
+        isShowWelcome.value = false
+      }
+    }
+
+
+    /**
+     * 加载分类菜单
+     */
+    const categoriesTree = ref();
+    const handleQueryCategory = () => {
+      axios.get("/category/list").then(response => {
+        const data = response.data;
+        if (data.code == 200) {
+          console.log("11")
+          categoriesTree.value = data.data;
+        } else {
+          message.error(data.message)
+        }
+      });
+    };
 
     return{
-      ebooks,
-      listData,
+      handleClick,
       actions,
+      ebooks,
+      categoriesTree,
+      isShowWelcome,
+      handleEbookQuery
     }
   }
 });
