@@ -18,6 +18,7 @@
           :row-key="record => record.id"
           :loading="loading"
           :pagination="false"
+          :expandRowByClick="true"
       >
         <template v-slot:action="{ text: record }">
           <a-space size="small">
@@ -77,20 +78,24 @@ export default defineComponent({
     const columns = [
       {
         title: '名称',
-        dataIndex: 'name'
+        dataIndex: 'name',
+        align: 'center'
       },
       {
         title: '父分类',
         key: 'parent',
-        dataIndex: 'parent'
+        dataIndex: 'parent',
+        align: 'center'
       },
       {
         title: '顺序',
-        dataIndex: 'sort'
+        dataIndex: 'sort',
+        align: 'center'
       },
       {
         title: '操作',
         key: 'action',
+        align: 'center',
         slots: {customRender: 'action'}
       }
     ];
@@ -99,7 +104,6 @@ export default defineComponent({
      * 数据查询
      */
     const handleQuery = () => {
-
       loading.value = true;
       axios.get("/category/list").then(response => {
         loading.value = false;
@@ -114,7 +118,7 @@ export default defineComponent({
 
 
     //------表单-----
-    const category = ref({})
+    const category = ref()
     const modalVisible = ref(false)
     const modalLoading = ref(false)
     const handleModalOk = () => {
