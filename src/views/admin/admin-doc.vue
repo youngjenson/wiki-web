@@ -27,7 +27,7 @@
                 title="确认要删除该条数据吗?"
                 ok-text="是"
                 cancel-text="否"
-                @confirm="handleDelete(record.id)"
+                @confirm="showConfirm(record.id)"
                 @cancel="cancel"
             >
               <a-button type="primary" danger>删除</a-button>
@@ -57,34 +57,31 @@
             tree-default-expand-all
             :tree-data="treeSelectData"
             :field-names="{label:'name',children: 'children', value: 'id'}"
-        ></a-tree-select>
-      </a-form-item>
-      <a-form-item label="父文档">
-        <a-select
-            v-model:value="doc.parent"
-            ref="select"
         >
-          <a-select-option :value="0">无</a-select-option>
-          <a-select-option v-for="val in docs" :key="val.id" :value="val.id" :disabled="val.id === doc.id">
-            {{ val.name }}
-          </a-select-option>
-        </a-select>
+        </a-tree-select>
       </a-form-item>
       <a-form-item label="顺序">
         <a-input v-model:value="doc.sort"/>
+      </a-form-item>
+      <a-form-item label="内容">
+        <div id="content"></div>
       </a-form-item>
     </a-form>
   </a-modal>
 </template>
 <script lang="ts">
-import {defineComponent, onMounted, ref, toRaw} from "vue";
+import {createVNode, defineComponent, onMounted, ref, toRaw} from "vue";
 import axios from "axios";
-import {message} from "ant-design-vue";
+import {message, Modal} from "ant-design-vue";
 import {Tool} from "@/utils/tool";
+import {useRoute} from "vue-router";
+import {ExclamationCircleOutlined} from "@ant-design/icons-vue";
+import E from 'wangeditor';
 
 export default defineComponent({
   name: 'Admindoc',
   setup() {
+    const route = useRoute()
     const docs = ref();
 
     const loading = ref(false);
@@ -118,7 +115,7 @@ export default defineComponent({
      */
     const handleQuery = () => {
       loading.value = true;
-      axios.get("/doc/list").then(response => {
+      axios.get("/doc/list?ebookId=" + route.query.ebookId).then(response => {
         loading.value = false;
         const data = response.data;
         if (data.code == 200) {
@@ -136,6 +133,13 @@ export default defineComponent({
     const doc = ref()
     const modalVisible = ref(false)
     const modalLoading = ref(false)
+    let editor: any;
+    const createEditor = () => {
+      if(editor != null) editor.destroy();
+      editor = new E('#content');
+      editor.create();
+    }
+
     const handleModalOk = () => {
       modalLoading.value = true;
       axios.post("/doc/edit", doc.value).then(response => {
@@ -157,9 +161,9 @@ export default defineComponent({
     const setDisable = (treeSelectData: any, id: any) => {
       for (let i = 0; i < treeSelectData.length; i++) {
         const node = treeSelectData[i]
-        // console.log(node)
+        console.log(node)
         if (node.id === id) {
-          console.log("disabled",node)
+          console.log("disabled", node)
           node.disabled = true;
           const children = node.children
           if (Tool.isNotEmpty(children)) {
@@ -176,6 +180,33 @@ export default defineComponent({
       }
     };
 
+    let ids: any[] = [];
+    /**
+     * 查找整根树枝
+     */
+    const getDeleteIds = (treeSelectData: any, id: any) => {
+      for (let i = 0; i < treeSelectData.length; i++) {
+        const node = treeSelectData[i]
+        // console.log(node)
+        if (node.id === id) {
+          // console.log("disabled", node)
+          // node.disabled = true;
+          ids.push(id)
+          const children = node.children
+          if (Tool.isNotEmpty(children)) {
+            for (let j = 0; j < children.length; j++) {
+              getDeleteIds(children, children[j].id)
+            }
+          }
+        } else {
+          const children = node.children
+          if (Tool.isNotEmpty(children)) {
+            getDeleteIds(children, id)
+          }
+        }
+      }
+    };
+
     /**
      * 编辑
      */
@@ -185,9 +216,11 @@ export default defineComponent({
 
       treeSelectData.value = Tool.copy(docs.value);
       console.log(treeSelectData.value);
-      setDisable(treeSelectData.value,record.id);
-
-      treeSelectData.value.unshift({id:0,name :'无'})
+      setDisable(treeSelectData.value, record.id);
+      treeSelectData.value.unshift({id: '0', name: '无'})
+      setTimeout(function () {
+        createEditor();
+      }, 100)
     }
 
     /**
@@ -195,16 +228,28 @@ export default defineComponent({
      */
     const add = () => {
       modalVisible.value = true;
-      doc.value = {}
+      doc.value = {
+        ebookId: route.query.ebookId
+      }
       treeSelectData.value = Tool.copy(docs.value);
-      treeSelectData.value.unshift({id:0,name :'无'})
+      if (Tool.isEmpty(treeSelectData.value)) treeSelectData.value = [];
+      treeSelectData.value.unshift({id: 0, name: '无'})
+      setTimeout(function () {
+        createEditor()
+      }, 100)
     }
 
     /**
      * 删除
      */
     const handleDelete = (id: any) => {
-      axios.delete("/doc/delete/" + id).then(response => {
+      getDeleteIds(docs.value, id);
+      console.log(ids)
+      axios({
+        method: "delete",
+        url: '/doc/delete',
+        data: ids
+      }).then(response => {
         const data = response.data;
         if (data.code == 200) {
           message.success(data.message)
@@ -214,6 +259,21 @@ export default defineComponent({
         }
       })
     }
+
+    const showConfirm = (id: any) => {
+      Modal.confirm({
+        title: '你确定要删除该文档吗?',
+        icon: createVNode(ExclamationCircleOutlined),
+        content: '该操作将删除该文档下的所有子文档',
+        onOk() {
+          handleDelete(id);
+        },
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
+        onCancel() {
+          message.info("取消删除")
+        },
+      });
+    };
 
     const cancel = () => {
       message.info("取消删除")
@@ -244,7 +304,8 @@ export default defineComponent({
       cancel,
       handleQuery,
       param,
-      treeSelectData
+      treeSelectData,
+      showConfirm
     }
   }
 })
