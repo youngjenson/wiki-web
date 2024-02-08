@@ -15,16 +15,15 @@
             </a-form>
           </p>
           <a-table
+              v-if="docs"
               :columns="columns"
               :data-source="docs"
               :row-key="record => record.id"
               :loading="loading"
               :pagination="false"
+              :defaultExpandAllRows = "true"
               size="small"
           >
-            <template #name="{ text , record }">
-              {{ record.sort }} {{ text }}
-            </template>
             <template v-slot:action="{ text: record }">
               <a-space size="small">
                 <a-button type="primary" @click="edit(record)" size="small">编辑</a-button>
@@ -69,12 +68,18 @@
               <a-input v-model:value="doc.sort" placeholder="顺序"/>
             </a-form-item>
             <a-form-item>
+              <a-button type="primary" @click="handlePreviewContent"><EyeOutlined/>内容预览</a-button>
+            </a-form-item>
+            <a-form-item>
               <div id="content"></div>
             </a-form-item>
           </a-form>
 
         </a-col>
       </a-row>
+      <a-drawer width="900" placement="right" :closable="false" :visible="drawerVisible" @close="onDrawerClose">
+        <div class="editor-content-view" :innerHTML="previewHtml"></div>
+      </a-drawer>
     </a-layout-content>
   </a-layout>
   <!--  <a-modal-->
@@ -111,6 +116,8 @@ export default defineComponent({
         slots: {customRender: 'action'}
       }
     ];
+    const treeSelectData = ref()
+    treeSelectData.value = [];
 
     /**
      * 数据查询
@@ -122,17 +129,31 @@ export default defineComponent({
         const data = response.data;
         if (data.code == 200) {
           docs.value = data.data;
+          treeSelectData.value = Tool.copy(docs.value);
+          if (Tool.isEmpty(treeSelectData.value)) treeSelectData.value = [];
+          treeSelectData.value.unshift({id: 0, name: '无'})
         } else {
           message.error(data.message)
         }
       });
     };
 
+    const handleQueryContent = () => {
+      axios.get("/doc/find-content/"+doc.value.id).then(response => {
+        if(response.data.code === 200){
+          editor.txt.html(response.data.data);
+        }else {
+          message.error(response.data.message);
+        }
+      })
+    }
+
 
     //------表单-----
-    const treeSelectData = ref()
-    treeSelectData.value = [];
-    const doc = ref({})
+    const doc = ref()
+    doc.value = {
+      ebookId: route.query.ebookId
+    }
     const modalVisible = ref(false)
     const modalLoading = ref(false)
     let editor: any;
@@ -145,6 +166,7 @@ export default defineComponent({
 
     const handleSave = () => {
       modalLoading.value = true;
+      doc.value.content = editor.txt.html();
       axios.post("/doc/edit", doc.value).then(response => {
         const data = response.data;
         if (data.code === 200) {
@@ -216,7 +238,7 @@ export default defineComponent({
     const edit = (record: any) => {
       modalVisible.value = true;
       doc.value = Tool.copy(record);
-
+      handleQueryContent();
       treeSelectData.value = Tool.copy(docs.value);
       console.log(treeSelectData.value);
       setDisable(treeSelectData.value, record.id);
@@ -255,6 +277,18 @@ export default defineComponent({
           message.error(data.message)
         }
       })
+    }
+
+    // 富文本预览
+    const drawerVisible = ref(false);
+    const previewHtml = ref();
+    const handlePreviewContent =() => {
+      const html = editor.txt.html();
+      previewHtml.value = html;
+      drawerVisible.value = true;
+    }
+    const onDrawerClose = () => {
+      drawerVisible.value = false;
     }
 
     const showConfirm = (id: any) => {
@@ -304,7 +338,11 @@ export default defineComponent({
       handleQuery,
       param,
       treeSelectData,
-      showConfirm
+      showConfirm,
+      handlePreviewContent,
+      onDrawerClose,
+      drawerVisible,
+      previewHtml
     }
   }
 })
